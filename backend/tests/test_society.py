@@ -1,3 +1,8 @@
+import pytest
+
+from app.evolution.coordinator import PolicyEvolutionCoordinator
+from app.policy.engine import PolicyEngine
+from app.policy.models import Policy
 from app.agents.models import Agent, AgentStatus, AgentType
 from app.experience.models import Experience
 from app.experience.store import ExperienceStore
@@ -244,3 +249,109 @@ def test_allocate_task_uses_policy_score():
 
     assert result is not None
     assert result.agent_id == "A02"
+
+def test_runtime_evolves_policy_from_recorded_experiences():
+    policy_engine = PolicyEngine()
+
+    coordinator = PolicyEvolutionCoordinator(
+        policy_engine=policy_engine,
+    )
+
+    agent = make_agent("A01", trust=0.80)
+
+    runtime = SocietyRuntime(
+        agents=[agent],
+        task_allocator=TaskAllocator(
+            candidate_filter=CandidateFilter(),
+            scorer=AgentScorer(),
+        ),
+        experience_store=ExperienceStore(),
+        trust_engine=TrustEngine(),
+        policy_engine=policy_engine,
+        evolution_coordinator=coordinator,
+    )
+
+    task = Task(
+        task_id="T07",
+        required_capabilities=["temperature_sensing"],
+    )
+
+    runtime.record_outcome(
+        task,
+        Experience(
+            experience_id="E07",
+            task_id="T07",
+            agent_id="A01",
+            success=True,
+            latency_ms=20.0,
+            resource_used=0.20,
+        ),
+    )
+
+    runtime.record_outcome(
+        task,
+        Experience(
+            experience_id="E08",
+            task_id="T07",
+            agent_id="A01",
+            success=False,
+            latency_ms=120.0,
+            resource_used=0.80,
+            failure_reason="timeout",
+        ),
+    )
+
+    initial_population = [
+        Policy(
+            trust_weight=0.35,
+            capability_weight=0.30,
+            latency_weight=0.20,
+            resource_weight=0.15,
+        ),
+        Policy(
+            trust_weight=0.50,
+            capability_weight=0.20,
+            latency_weight=0.20,
+            resource_weight=0.10,
+        ),
+        Policy(
+            trust_weight=0.20,
+            capability_weight=0.50,
+            latency_weight=0.20,
+            resource_weight=0.10,
+        ),
+        Policy(
+            trust_weight=0.25,
+            capability_weight=0.25,
+            latency_weight=0.30,
+            resource_weight=0.20,
+        ),
+    ]
+
+    original_policy = policy_engine.policy
+
+    best_policy, results = runtime.evolve_policy(
+        initial_population=initial_population,
+        generations=3,
+        seed=42,
+    )
+
+    assert isinstance(best_policy, Policy)
+    assert len(results) == 3
+
+    assert policy_engine.policy == best_policy
+    assert policy_engine.policy != original_policy
+
+    total = (
+        best_policy.trust_weight
+        + best_policy.capability_weight
+        + best_policy.latency_weight
+        + best_policy.resource_weight
+    )
+
+    assert total == pytest.approx(1.0)
+
+    allocation = runtime.allocate_task(task)
+
+    assert allocation is not None
+    assert allocation.agent_id == "A01"
