@@ -118,3 +118,32 @@ def test_default_weights_sum_to_one():
     )
 
     assert total == pytest.approx(1.0)
+
+def test_set_policy_changes_scoring_policy():
+    engine = PolicyEngine()
+
+    original_score = engine.score(
+        trust=1.0,
+        capability=0.0,
+        latency=1.0,
+        resource=1.0,
+    )
+
+    engine.set_policy(
+        Policy(
+            trust_weight=0.0,
+            capability_weight=1.0,
+            latency_weight=0.0,
+            resource_weight=0.0,
+        )
+    )
+
+    updated_score = engine.score(
+        trust=1.0,
+        capability=0.0,
+        latency=1.0,
+        resource=1.0,
+    )
+
+    assert original_score == 0.35
+    assert updated_score == 0.0

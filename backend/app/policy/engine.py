@@ -5,6 +5,9 @@ class PolicyEngine:
     def __init__(self, policy: Policy | None = None) -> None:
         self.policy = policy or Policy()
 
+    def set_policy(self, policy: Policy) -> None:
+        self.policy = policy
+
     def score(
         self,
         trust: float,
