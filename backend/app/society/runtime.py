@@ -25,20 +25,11 @@ class SocietyRuntime:
         self._trust_engine = trust_engine
         self._policy_engine = policy_engine or PolicyEngine()
 
-    def allocate_task(
+    def select_by_policy(
         self,
         task: Task,
-    ):
-        candidates = self._task_allocator._candidate_filter.filter(
-            task,
-            self._agents,
-        )
-        
-        candidates = self._task_allocator.get_candidates(
-            task,
-            self._agents,
-        )
-
+        candidates: list[Agent],
+    ) -> AllocationResult | None:
         if not candidates:
             return None
 
@@ -75,6 +66,20 @@ class SocietyRuntime:
             task_id=task.task_id,
             agent_id=selected_agent.agent_id,
             score=selected_score,
+        )
+
+    def allocate_task(
+        self,
+        task: Task,
+    ) -> AllocationResult | None:
+        candidates = self._task_allocator.get_candidates(
+            task,
+            self._agents,
+        )
+
+        return self.select_by_policy(
+            task,
+            candidates,
         )
 
     def score_agent(
