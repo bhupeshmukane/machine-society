@@ -166,3 +166,81 @@ def test_policy_score_rewards_higher_trust():
     )
 
     assert high_score.score > low_score.score
+
+def test_policy_allocation_prefers_higher_trust():
+    high_trust = make_agent("A01", trust=0.95)
+    low_trust = make_agent("A02", trust=0.50)
+
+    runtime = make_runtime(
+        [low_trust, high_trust],
+    )
+
+    task = Task(
+        task_id="T05",
+        required_capabilities=["temperature_sensing"],
+    )
+
+    result = runtime.allocate_task(task)
+
+    assert result is not None
+    assert result.agent_id == "A01"
+
+def test_policy_allocation_returns_none_without_candidate():
+    agent = make_agent("A01")
+
+    agent.status = AgentStatus.OFFLINE
+
+    runtime = make_runtime([agent])
+
+    task = Task(
+        task_id="T06",
+        required_capabilities=["temperature_sensing"],
+    )
+
+    result = runtime.allocate_task(task)
+
+    assert result is None
+
+def test_policy_score_rewards_lower_load():
+    high_load = make_agent("A01", trust=0.80)
+    low_load = make_agent("A02", trust=0.80)
+
+    high_load.load = 0.90
+    low_load.load = 0.10
+
+    runtime = make_runtime(
+        [high_load, low_load],
+    )
+
+    high_score = runtime.score_agent(
+        high_load,
+        capability_score=1.0,
+    )
+
+    low_score = runtime.score_agent(
+        low_load,
+        capability_score=1.0,
+    )
+
+    assert low_score.score > high_score.score
+
+def test_allocate_task_uses_policy_score():
+    high_load = make_agent("A01", trust=0.80)
+    low_load = make_agent("A02", trust=0.80)
+
+    high_load.load = 0.90
+    low_load.load = 0.10
+
+    runtime = make_runtime(
+        [high_load, low_load],
+    )
+
+    task = Task(
+        task_id="T05",
+        required_capabilities=["temperature_sensing"],
+    )
+
+    result = runtime.allocate_task(task)
+
+    assert result is not None
+    assert result.agent_id == "A02"

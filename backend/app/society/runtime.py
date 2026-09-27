@@ -2,6 +2,7 @@ from app.agents.models import Agent
 from app.experience.models import Experience
 from app.experience.store import ExperienceStore
 from app.policy.engine import PolicyEngine
+from app.tasks.allocator import AllocationResult
 from app.tasks.allocator import TaskAllocator
 from app.tasks.task import Task
 from app.trust.engine import TrustEngine
@@ -28,9 +29,47 @@ class SocietyRuntime:
         self,
         task: Task,
     ):
-        return self._task_allocator.allocate(
+        candidates = self._task_allocator._candidate_filter.filter(
             task,
             self._agents,
+        )
+
+        if not candidates:
+            return None
+
+        scored_candidates = []
+
+        for agent in candidates:
+            if task.required_capabilities:
+                matched = sum(
+                    capability in agent.capabilities
+                    for capability in task.required_capabilities
+                )
+
+                capability_score = (
+                    matched / len(task.required_capabilities)
+                )
+            else:
+                capability_score = 1.0
+
+            policy_score = self.score_agent(
+                agent,
+                capability_score,
+            )
+
+            scored_candidates.append(
+                (agent, policy_score.score)
+            )
+
+        selected_agent, selected_score = max(
+            scored_candidates,
+            key=lambda item: item[1],
+        )
+
+        return AllocationResult(
+            task_id=task.task_id,
+            agent_id=selected_agent.agent_id,
+            score=selected_score,
         )
 
     def score_agent(
