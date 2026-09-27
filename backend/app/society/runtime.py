@@ -131,10 +131,7 @@ class SocietyRuntime:
 
         agent.trust = trust_update.new_trust
 
-        allocation = self._task_allocator.allocate(
-            task,
-            self._agents,
-        )
+        allocation = self.allocate_task(task)
 
         return TaskExecutionResult(
             allocation=allocation,
