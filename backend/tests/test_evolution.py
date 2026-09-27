@@ -199,3 +199,55 @@ def test_invalid_generation_count_is_rejected():
 
     with pytest.raises(ValueError):
         engine.evolve(make_population(4), generations=0)
+
+def test_best_policy_returns_highest_fitness_policy():
+    population = [
+        Policy(
+            trust_weight=0.90,
+            capability_weight=0.05,
+            latency_weight=0.03,
+            resource_weight=0.02,
+        ),
+        Policy(
+            trust_weight=0.40,
+            capability_weight=0.30,
+            latency_weight=0.20,
+            resource_weight=0.10,
+        ),
+        Policy(
+            trust_weight=0.20,
+            capability_weight=0.30,
+            latency_weight=0.30,
+            resource_weight=0.20,
+        ),
+        Policy(
+            trust_weight=0.25,
+            capability_weight=0.25,
+            latency_weight=0.25,
+            resource_weight=0.25,
+        ),
+    ]
+
+    engine = EvolutionEngine(
+        fitness_function=lambda policy: policy.trust_weight,
+        population_size=4,
+        seed=42,
+    )
+
+    results = engine.evolve(
+        population,
+        generations=2,
+    )
+
+    best_policy = engine.best_policy(results)
+
+    assert best_policy == results[-1].population[0].policy
+
+def test_best_policy_rejects_empty_results():
+    engine = EvolutionEngine(
+        fitness_function=lambda policy: 0.5,
+        population_size=4,
+    )
+
+    with pytest.raises(ValueError):
+        engine.best_policy([])

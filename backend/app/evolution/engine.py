@@ -193,3 +193,12 @@ class EvolutionEngine:
             population = self._evaluate(next_population)
 
         return results
+
+    @staticmethod
+    def best_policy(
+        results: Sequence[GenerationResult],
+    ) -> Policy:
+        if not results:
+            raise ValueError("evolution results cannot be empty")
+
+        return results[-1].population[0].policy
