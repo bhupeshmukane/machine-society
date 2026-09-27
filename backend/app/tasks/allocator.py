@@ -22,6 +22,16 @@ class TaskAllocator:
         self._candidate_filter = candidate_filter
         self._scorer = scorer
 
+    def get_candidates(
+        self,
+        task: Task,
+        agents: list[Agent],
+    ) -> list[Agent]:
+        return self._candidate_filter.filter(
+            task,
+            agents,
+        )    
+
     def allocate(
         self,
         task: Task,

@@ -33,6 +33,11 @@ class SocietyRuntime:
             task,
             self._agents,
         )
+        
+        candidates = self._task_allocator.get_candidates(
+            task,
+            self._agents,
+        )
 
         if not candidates:
             return None
