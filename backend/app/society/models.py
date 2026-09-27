@@ -9,3 +9,9 @@ class TaskExecutionResult:
     success: bool | None
     experience_id: str | None
     trust_update_reason: str | None
+
+
+@dataclass(frozen=True)
+class AgentPolicyScore:
+    agent_id: str
+    score: float

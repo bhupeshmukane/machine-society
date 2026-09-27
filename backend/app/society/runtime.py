@@ -1,11 +1,12 @@
 from app.agents.models import Agent
 from app.experience.models import Experience
 from app.experience.store import ExperienceStore
+from app.policy.engine import PolicyEngine
 from app.tasks.allocator import TaskAllocator
 from app.tasks.task import Task
 from app.trust.engine import TrustEngine
 
-from .models import TaskExecutionResult
+from .models import AgentPolicyScore, TaskExecutionResult
 
 
 class SocietyRuntime:
@@ -15,11 +16,13 @@ class SocietyRuntime:
         task_allocator: TaskAllocator,
         experience_store: ExperienceStore,
         trust_engine: TrustEngine,
+        policy_engine: PolicyEngine | None = None,
     ) -> None:
         self._agents = agents
         self._task_allocator = task_allocator
         self._experience_store = experience_store
         self._trust_engine = trust_engine
+        self._policy_engine = policy_engine or PolicyEngine()
 
     def allocate_task(
         self,
@@ -28,6 +31,23 @@ class SocietyRuntime:
         return self._task_allocator.allocate(
             task,
             self._agents,
+        )
+
+    def score_agent(
+        self,
+        agent: Agent,
+        capability_score: float,
+    ) -> AgentPolicyScore:
+        score = self._policy_engine.score(
+            trust=agent.trust,
+            capability=capability_score,
+            latency=min(agent.latency_ms / 100.0, 1.0),
+            resource=agent.load,
+        )
+
+        return AgentPolicyScore(
+            agent_id=agent.agent_id,
+            score=score,
         )
 
     def record_outcome(

@@ -133,3 +133,36 @@ def test_experience_is_stored():
     # Runtime integration is expected to persist the outcome.
     assert runtime._experience_store.count() == 1
     assert runtime._experience_store.get("E03") == experience
+
+def test_policy_scores_agent():
+    agent = make_agent("A01", trust=0.80)
+    runtime = make_runtime([agent])
+
+    result = runtime.score_agent(
+        agent,
+        capability_score=1.0,
+    )
+
+    assert result.agent_id == "A01"
+    assert 0.0 <= result.score <= 1.0
+
+
+def test_policy_score_rewards_higher_trust():
+    high_trust = make_agent("A01", trust=0.90)
+    low_trust = make_agent("A02", trust=0.50)
+
+    runtime = make_runtime(
+        [high_trust, low_trust],
+    )
+
+    high_score = runtime.score_agent(
+        high_trust,
+        capability_score=1.0,
+    )
+
+    low_score = runtime.score_agent(
+        low_trust,
+        capability_score=1.0,
+    )
+
+    assert high_score.score > low_score.score
