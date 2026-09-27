@@ -1,7 +1,10 @@
 from app.agents.models import Agent
+from app.evolution.coordinator import PolicyEvolutionCoordinator
+from app.evolution.models import GenerationResult
 from app.experience.models import Experience
 from app.experience.store import ExperienceStore
 from app.policy.engine import PolicyEngine
+from app.policy.models import Policy
 from app.tasks.allocator import AllocationResult
 from app.tasks.allocator import TaskAllocator
 from app.tasks.task import Task
@@ -18,12 +21,32 @@ class SocietyRuntime:
         experience_store: ExperienceStore,
         trust_engine: TrustEngine,
         policy_engine: PolicyEngine | None = None,
+        evolution_coordinator: PolicyEvolutionCoordinator | None = None,
     ) -> None:
         self._agents = agents
         self._task_allocator = task_allocator
         self._experience_store = experience_store
         self._trust_engine = trust_engine
         self._policy_engine = policy_engine or PolicyEngine()
+        self._evolution_coordinator = evolution_coordinator
+
+    def evolve_policy(
+        self,
+        initial_population: list[Policy],
+        generations: int = 3,
+        seed: int | None = None,
+    ) -> tuple[Policy, list[GenerationResult]]:
+        if self._evolution_coordinator is None:
+            raise RuntimeError(
+                "Policy evolution coordinator is not configured"
+            )
+
+        return self._evolution_coordinator.evolve(
+            experiences=self._experience_store.list(),
+            initial_population=initial_population,
+            generations=generations,
+            seed=seed,
+        )
 
     def select_by_policy(
         self,
