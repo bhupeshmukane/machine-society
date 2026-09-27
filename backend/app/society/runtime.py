@@ -35,14 +35,22 @@ class SocietyRuntime:
         initial_population: list[Policy],
         generations: int = 3,
         seed: int | None = None,
+        min_experiences: int = 1,
     ) -> tuple[Policy, list[GenerationResult]]:
         if self._evolution_coordinator is None:
             raise RuntimeError(
                 "Policy evolution coordinator is not configured"
             )
 
+        experiences = self._experience_store.list()
+
+        if len(experiences) < min_experiences:
+            raise ValueError(
+                "not enough experiences for policy evolution"
+            )
+
         return self._evolution_coordinator.evolve(
-            experiences=self._experience_store.list(),
+            experiences=experiences,
             initial_population=initial_population,
             generations=generations,
             seed=seed,

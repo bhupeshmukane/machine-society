@@ -355,3 +355,123 @@ def test_runtime_evolves_policy_from_recorded_experiences():
 
     assert allocation is not None
     assert allocation.agent_id == "A01"
+
+def test_runtime_rejects_policy_evolution_without_enough_experiences():
+    policy_engine = PolicyEngine()
+
+    coordinator = PolicyEvolutionCoordinator(
+        policy_engine=policy_engine,
+    )
+
+    runtime = SocietyRuntime(
+        agents=[],
+        task_allocator=TaskAllocator(
+            candidate_filter=CandidateFilter(),
+            scorer=AgentScorer(),
+        ),
+        experience_store=ExperienceStore(),
+        trust_engine=TrustEngine(),
+        policy_engine=policy_engine,
+        evolution_coordinator=coordinator,
+    )
+
+    population = [
+        Policy(
+            trust_weight=0.35,
+            capability_weight=0.30,
+            latency_weight=0.20,
+            resource_weight=0.15,
+        )
+        for _ in range(4)
+    ]
+
+    with pytest.raises(
+        ValueError,
+        match="not enough experiences",
+    ):
+        runtime.evolve_policy(
+            initial_population=population,
+            min_experiences=2,
+        )
+
+def test_runtime_evolves_when_experience_threshold_is_reached():
+    policy_engine = PolicyEngine()
+
+    coordinator = PolicyEvolutionCoordinator(
+        policy_engine=policy_engine,
+    )
+
+    experience_store = ExperienceStore()
+
+    experience_store.record(
+        Experience(
+            experience_id="E09",
+            task_id="T08",
+            agent_id="A01",
+            success=True,
+            latency_ms=20.0,
+            resource_used=0.20,
+        )
+    )
+
+    experience_store.record(
+        Experience(
+            experience_id="E10",
+            task_id="T08",
+            agent_id="A01",
+            success=False,
+            latency_ms=120.0,
+            resource_used=0.80,
+            failure_reason="timeout",
+        )
+    )
+
+    runtime = SocietyRuntime(
+        agents=[],
+        task_allocator=TaskAllocator(
+            candidate_filter=CandidateFilter(),
+            scorer=AgentScorer(),
+        ),
+        experience_store=experience_store,
+        trust_engine=TrustEngine(),
+        policy_engine=policy_engine,
+        evolution_coordinator=coordinator,
+    )
+
+    population = [
+        Policy(
+            trust_weight=0.35,
+            capability_weight=0.30,
+            latency_weight=0.20,
+            resource_weight=0.15,
+        ),
+        Policy(
+            trust_weight=0.50,
+            capability_weight=0.20,
+            latency_weight=0.20,
+            resource_weight=0.10,
+        ),
+        Policy(
+            trust_weight=0.20,
+            capability_weight=0.50,
+            latency_weight=0.20,
+            resource_weight=0.10,
+        ),
+        Policy(
+            trust_weight=0.25,
+            capability_weight=0.25,
+            latency_weight=0.30,
+            resource_weight=0.20,
+        ),
+    ]
+
+    best_policy, results = runtime.evolve_policy(
+        initial_population=population,
+        generations=2,
+        min_experiences=2,
+        seed=42,
+    )
+
+    assert isinstance(best_policy, Policy)
+    assert len(results) == 2
+    assert policy_engine.policy == best_policy
