@@ -77,3 +77,6 @@ class HeartbeatManager:
             )
 
         return agents
+
+    def get_agent(self, agent_id: str) -> Agent | None:
+        return self._registry.get(agent_id)
